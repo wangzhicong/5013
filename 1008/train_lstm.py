@@ -12,8 +12,8 @@ import numpy as np
 #sys.path.append(working_folder)
 from auxiliary import generate_seg,generate_bar
 
-data_format1_dir = 'C:\\Users\\Wangzhc\\Desktop\\codes\\python code\\5013\\data\\'
-data_format2_dir = 'C:\\Users\\Wangzhc\\Desktop\\codes\\python code\\5013\\data\\'
+data_format1_dir = 'C:\\Users\\wangz\\Desktop\\codes\\python code\\5013\\data\\'
+data_format2_dir = 'C:\\Users\\wangz\\Desktop\\codes\\python code\\5013\\data\\'
 
 
 training_set={}
@@ -85,7 +85,7 @@ def preparing_training(filename):
     format2 = h5py.File(data_format2_path, mode='r')
     #assets = list(format1.keys())
     keys = list(format2.keys())
-    data_load = len(keys)
+    data_load =  len(keys)
 
     for i in tqdm(range(data_load)):
         for asset in range(4):

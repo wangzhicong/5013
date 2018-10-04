@@ -8,7 +8,7 @@ def generate_bar(data):
     for i in range(len(data)):
         #print(data[i][0],data[0][-2])
         #tmp = 
-        output.append(100*(sum(data[i][0:4])/sum(data[0][0:4])-1))
+        output.append(100*(sum(data[i][0:4])/sum(data[14][0:4])-1))
         
         
     return output #,volume_ave]#,h,l]
@@ -17,7 +17,7 @@ def generate_bar(data):
 def generate_bar2(data):
     output = []
     for i in range(len(data)):
-        output.append(100*(data[i]/data[0]-1))
+        output.append(100*(data[i]/data[14]-1))
         
         
     return output #,volume_ave]#,h,l]
