@@ -13,7 +13,7 @@ import numpy as np
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 bar_length = 1 # Number of minutes to generate next new bar
-interval_length = 15 # length for gru cell
+interval_length = 60*3 # length for gru cell
 skip_length = 1 # the skip interval for each prediction
 rnn_unit= 32 # hidden layer units
 input_size=1  # input size of gru cell
@@ -22,8 +22,8 @@ batch_size=1 # batch_size of gru cell
 time_step = interval_length
 
 #threshold for transaction, maybe changed for different type later
-threshold =[0.5 for i in range(4)]
-assets = [0,1,2,3]
+threshold =[0.1 for i in range(4)]
+assets = [0]
 #transaction coef, maybe changed for different type later
 coef = [1 for i in range(4)]
 
@@ -39,9 +39,10 @@ def lstm(X,weights,biases):
     state=cell.zero_state(batch_size,dtype=tf.float32)
     output_rnn,final_states=tf.nn.dynamic_rnn(cell, input_rnn,initial_state=state, dtype=tf.float32,scope='Gru')  #output_rnn是记录lstm每个输出节点的结果，final_states是最后一个cell的结果
     output=tf.reshape(output_rnn,[-1,rnn_unit]) #作为输出层的输入
-    w_out=weights['out']
-    b_out=biases['out']
-    pred=tf.matmul(output,w_out)+b_out
+    pred = tf.layers.dense(output,output_size)
+    #w_out=weights['out']
+    #b_out=biases['out']
+    #pred=tf.matmul(output,w_out)+b_out
     return pred,final_states
 
 
@@ -78,9 +79,9 @@ def prediction_lstm(asset_index,inputs,time_step,save_name):
 
         ##x = np.array(inputs).reshape(1,len(inputs),input_size)
         #prob=sess.run(pred,feed_dict={X:x})
-
+        ##if trans(prob[-1][0]) * trans(prob[-len(trans)//][0]) > 0
         predict = trans(prob[-1][0])
-        print(asset_index,prob[-1])
+        #print(asset_index,prob[-1])
     return predict
 
 
@@ -126,6 +127,8 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
         memory.transaction = {}
         memory.last = {}
         memory.next = {}
+        memory.flag = {}
+        memory.data_accuracy={}
         for asset_index in range(4):
             #memory.data_save[asset_index] = pd.DataFrame(columns = ['close', 'high', 'low', 'open', 'volume'])
             memory.data_save[asset_index] = pd.DataFrame(columns = ['close', 'high', 'low', 'open', 'volume'])
@@ -133,6 +136,8 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
             memory.transaction[asset_index] = 0
             memory.last[asset_index] = 0
             memory.next[asset_index] = 0
+            memory.flag[asset_index] = 0
+            memory.data_accuracy[asset_index] =[]
 
     
     if (counter + 1) % bar_length == 0:
@@ -155,49 +160,51 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
              #print(counter,position_current, memory.transaction,cash_balance,total_balance) 
              for asset_index in assets:
                 #print(counter,position_new) 
-                memory.next[asset_index] = position_current[asset_index]
                 
-                memory.transaction[asset_index] = memory.last[asset_index]-memory.next[asset_index]
-                position_new[asset_index] += memory.transaction[asset_index]
-                memory.last[asset_index] = position_current[asset_index]
-                #print(memory.last,position_current)
-                #print(counter,position_new) 
                 
-                inpuuts = generate_bar2(memory.data[asset_index])
-                #print(asset_index,inpuuts)
-                tf.reset_default_graph()
-                #print(len(memory.data),len(memory.data[0]))
-                predict = prediction_lstm(asset_index,inpuuts,interval_length,save_name)
+                #if memory.flag[asset_index] == 1:
+                #    memory.flag[asset_index] = 0
+                    #memory.next[asset_index] = position_current[asset_index]
+                    #memory.transaction[asset_index] = memory.last[asset_index]-memory.next[asset_index]
+                    #position_new[asset_index] = 0 # memory.transaction[asset_index]
+                #    memory.last[asset_index] = position_current[asset_index]
+                #else:
+                if 1:
+                    memory.flag[asset_index] = 1
+                    memory.last[asset_index] = position_current[asset_index]
+                    inpuuts = generate_bar2(memory.data[asset_index])
+                    tf.reset_default_graph()
+                    predict = prediction_lstm(asset_index,inpuuts,interval_length,save_name)
+                    
+                    # 追买追卖策略
+                    #if memory.transaction[asset_index] * predict > 0:
+                    #    memory.transaction[asset_index] += predict
+                    #else:
+                    memory.transaction[asset_index] = predict
+                    
+                    
+                    position_new[asset_index] =  memory.transaction[asset_index]
+                    
+                
+                
+                #memory.data_accuracy[asset_index].append([memory.data_save[asset_index].loc[bar_length - 1],predict*0.1])
+                #print(position_current)
                 memory.data[asset_index]= []
-                #memory.transaction[asset_index] = -predict
-                position_new[asset_index] += predict
-
-
-        #for asset_index in assets:
-                #if position_current[asset_index] >= 0:
-                    #if position_current[asset_index] > 30:
-                     #   position_new[asset_index] += min(0,predict)
-                    #else:
-                    #if  position_new[asset_index] * predict < 0 and cash_balance > init_cash *  0.2:
-                     #   position_new[asset_index] += predict
-                    #else:
-                        #position_new[asset_index] -= 1
-                #elif position_current[asset_index] < 0:
-                #    if predict > 0:
-                #        position_new[asset_index] += predict
-               #if cash_balance < init_cash *  0.2: # avoid stop strategy                    
-                   #if predict < 0: # only selling is allowed
-                       #position_new[asset_index] += predict
-               #else:
-                    #position_new[asset_index] +=  predict
-                #print(counter,position_new) 
-        #for asset_index in  assets:
-        #    memory.data_save[asset_index]= [] #= data[asset_index,]
-        #(position_new,cash_balance,total_balance)
-        #memory.data = memory.data[skip_length:len(memory.data)].copy()
+                
+                
+                
         
     else:
         for asset_index in  assets:
+        
+            #if memory.flag[asset_index] == 0:
+            #    if (counter + 1) % bar_length - 1 < interval_length * 0.1:
+            #        position_new[asset_index] = 0 
+            #else:
+            if 1:
+                if (counter + 1) % bar_length - 1 < interval_length * 0.1:
+                    position_new[asset_index] = memory.last[asset_index] + memory.transaction[asset_index]
+            
             memory.data_save[asset_index].loc[(counter + 1) % bar_length - 1] = data[asset_index,]
 
     # End of strategy

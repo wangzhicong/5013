@@ -12,8 +12,8 @@ import numpy as np
 #sys.path.append(working_folder)
 from auxiliary import generate_seg,generate_bar
 
-data_format1_dir = 'C:\\Users\\wangz\\Desktop\\codes\\python code\\5013\\data\\'
-data_format2_dir = 'C:\\Users\\wangz\\Desktop\\codes\\python code\\5013\\data\\'
+data_format1_dir = 'C:\\Users\\Wangzhc\\Desktop\\codes\\python code\\5013\\data\\'
+data_format2_dir = 'C:\\Users\\Wangzhc\\Desktop\\codes\\python code\\5013\\data\\'
 
 
 training_set={}
@@ -33,7 +33,7 @@ keys = list(format2.keys())
 
 
 
-bar_length = 30
+bar_length = 60*6
 time_step = bar_length //2
 
 rnn_unit= 32       #hidden layer units
@@ -41,11 +41,11 @@ input_size=1
 output_size=1
  
 globalstep = 25000 # 全局下降步数 
-lr = 0.01 # 初始学习率 
+lr = 0.001 # 初始学习率 
 #decaystep = data_load * 10 # 实现衰减的频率 
 decay_rate = 0.1 # 衰减率 
 epoch = 100
-batch_size = 64
+batch_size = 512
 
 split = 0.1
 pred_num = 0 #int(data_load*split)
@@ -85,12 +85,12 @@ def preparing_training(filename):
     format2 = h5py.File(data_format2_path, mode='r')
     #assets = list(format1.keys())
     keys = list(format2.keys())
-    data_load =  len(keys)
+    data_load = len(keys)
 
     for i in tqdm(range(data_load)):
         for asset in range(4):
             
-            if len(data[asset]) == bar_length:
+            if len(data[asset]) == bar_length-1:
                 data_cur_min = format2[keys[i]][:]
                 data[asset].append(data_cur_min[asset,])
                 segment = generate_bar(data[asset])   
@@ -211,8 +211,9 @@ def lstm(X,weights,biases):
     time_step=tf.shape(X)[1]
     w_in=weights['in']
     b_in=biases['in']  
-    input=tf.reshape(X,[-1,input_size])  #需要将tensor转成2维进行计算，计算后的结果作为隐藏层的输入
-    input_rnn=tf.matmul(input,w_in)+b_in
+    inputs=tf.reshape(X,[-1,input_size])  #需要将tensor转成2维进行计算，计算后的结果作为隐藏层的输入
+    #input_rnn = tf.layers.dense(inputs,time_step*rnn_unit)
+    input_rnn=tf.matmul(inputs,w_in)+b_in
     input_rnn=tf.reshape(input_rnn,[-1,time_step,rnn_unit])  #将tensor转成3维，作为lstm cell的输入
     #cell=tf.contrib.rnn.BasicLSTMCell(rnn_unit)
     #cell=tf.contrib.rnn.core_rnn_cell.BasicLSTMCell(rnn_unit)
@@ -222,9 +223,10 @@ def lstm(X,weights,biases):
     state=cell.zero_state(batch_size,dtype=tf.float32)
     output_rnn,final_states=tf.nn.dynamic_rnn(cell, input_rnn,initial_state=state, dtype=tf.float32,scope='Gru')  #output_rnn是记录lstm每个输出节点的结果，final_states是最后一个cell的结果
     output=tf.reshape(output_rnn,[-1,rnn_unit]) #作为输出层的输入
-    w_out=weights['out']
-    b_out=biases['out']
-    pred=tf.matmul(output,w_out)+b_out
+    pred = tf.layers.dense(output,output_size)
+    #w_out=weights['out']
+    #b_out=biases['out']
+    #pred=tf.matmul(output,w_out)+b_out
     return pred,final_states
 
 def train_lstm(index,save_name,time_step=time_step):
@@ -247,7 +249,7 @@ def train_lstm(index,save_name,time_step=time_step):
 
 
     pred,_ = lstm(X,weights,biases)
-    
+    #print(pred,Y)
     
     #pred = tf.nn.softmax(tf.matmul(states,W)+B)
     #损失函数
@@ -276,6 +278,7 @@ def train_lstm(index,save_name,time_step=time_step):
             #print(x,y)
             #print(i,len(x_l[0][0][0]))
             x = np.array(x_l).reshape(batch_size,time_step,input_size)
+            #print(x.shape)
             y = np.array(y_l).reshape(batch_size,time_step,output_size)
             _,loss_=sess.run([train_op,loss],feed_dict={X:x,Y:y,global_:i}) 
             
@@ -381,7 +384,7 @@ def train_lstm(index,save_name,time_step=time_step):
         print ('mae:',mae,'   rmse:',rmse)
         '''
     #return predict
-for i in range(4):
+for i in range(1,4):
     tf.reset_default_graph()
     save_name =str(i)+'.ckpt'
     train_lstm(i,save_name)
