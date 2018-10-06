@@ -37,12 +37,12 @@ bar_length = 60*6
 time_step = bar_length //2
 
 rnn_unit= 32       #hidden layer units
-input_size=1
-output_size=1
+input_size=2
+output_size=2
  
 globalstep = 25000 # 全局下降步数 
-lr = 0.001 # 初始学习率 
-#decaystep = data_load * 10 # 实现衰减的频率 
+lr = 0.01 # 初始学习率 
+decaystep = 1000 * 10 # 实现衰减的频率 
 decay_rate = 0.1 # 衰减率 
 epoch = 100
 batch_size = 512
@@ -85,7 +85,7 @@ def preparing_training(filename):
     format2 = h5py.File(data_format2_path, mode='r')
     #assets = list(format1.keys())
     keys = list(format2.keys())
-    data_load = len(keys)
+    data_load = 200#len(keys)
 
     for i in tqdm(range(data_load)):
         for asset in range(4):
@@ -254,11 +254,11 @@ def train_lstm(index,save_name,time_step=time_step):
     #pred = tf.nn.softmax(tf.matmul(states,W)+B)
     #损失函数
     global_ = tf.Variable(tf.constant(0), trainable=False)
-    #f = tf.train.natural_exp_decay(lr, global_, decaystep, decay_rate, staircase=True)   
+    f = tf.train.natural_exp_decay(lr, global_, decaystep, decay_rate, staircase=True)   
     #l2loss = tf.nn.l2_loss(weights) + tf.nn.l2_loss(biases)
     #loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=Y)) #+ 0.01*l2loss
     loss = tf.reduce_mean(tf.square(tf.reshape(pred,[-1])-tf.reshape(Y, [-1]))) #+ l2loss
-    train_op=tf.train.AdamOptimizer(lr).minimize(loss)  
+    train_op=tf.train.AdamOptimizer(f).minimize(loss)  
     saver=tf.train.Saver(tf.global_variables())
     with tf.Session() as sess:
         #w = np.random.randn(rnn_unit,output_size)
@@ -384,7 +384,7 @@ def train_lstm(index,save_name,time_step=time_step):
         print ('mae:',mae,'   rmse:',rmse)
         '''
     #return predict
-for i in range(1,4):
+for i in range(4):
     tf.reset_default_graph()
     save_name =str(i)+'.ckpt'
     train_lstm(i,save_name)

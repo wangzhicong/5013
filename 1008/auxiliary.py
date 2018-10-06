@@ -13,7 +13,7 @@ def generate_bar(data):
     for i in range(len(data)):
         #print(data[i][0],data[0][-2])
         #tmp = 
-        output.append(100*(sum(data[i][0:4])/sum(data[len(data)//2-1][0:4])-1))#,sigmoid(data[i][4]/data[14][4]-1)])
+        output.append([100*(sum(data[i][0:4])/sum(data[len(data)//2-1][0:4])-1),(data[i][4]/data[14][4]-1)])
         
         
     return output #,volume_ave]#,h,l]
@@ -22,7 +22,7 @@ def generate_bar(data):
 def generate_bar2(data):
     output = []
     for i in range(len(data)):
-        output.append(100*(data[i]/data[len(data)//2 -1]-1))#,sigmoid(data[i][1]/data[14][1]-1)])
+        output.append([100*(data[i][0]/data[len(data)//2 -1][0]-1),(data[i][1]/data[len(data)//2 -1][1]-1)])
         
         
     return output #,volume_ave]#,h,l]
@@ -38,12 +38,12 @@ def generate_seg(data):
     low = data['low'].min()
     volume_ave = data['volume'].mean()
     #print(data)
-    close = (open_price+close+high+low)/4
+    value = (open_price+close+high+low)/4
 
       
     
     
-    return close#,volume_ave]#,volume_ave]#,h*100,l*100] #,volume_ave]#,h,l]
+    return [value,volume_ave]#,volume_ave]#,volume_ave]#,h*100,l*100] #,volume_ave]#,h,l]
     #return [open_price,high,low,volume_ave,close],status
     #OHLC = pd.DataFrame(data = [[open_price, high, low, close, volume_ave]], columns = ['open', 'high', 'low', 'close', 'volume_ave'])
     

@@ -16,16 +16,28 @@ bar_length = 1 # Number of minutes to generate next new bar
 interval_length = 60*3 # length for gru cell
 skip_length = 1 # the skip interval for each prediction
 rnn_unit= 32 # hidden layer units
-input_size=1  # input size of gru cell
-output_size=1 # output size of gru cell
+input_size=2  # input size of gru cell
+output_size=2 # output size of gru cell
 batch_size=1 # batch_size of gru cell
 time_step = interval_length
 
 #threshold for transaction, maybe changed for different type later
 threshold =[0.1 for i in range(4)]
-assets = [0]
+assets = [0,1,2,3]
 #transaction coef, maybe changed for different type later
 coef = [1 for i in range(4)]
+
+
+
+
+def trans(num,asset_index):
+    r = num/threshold[asset_index]
+    if num >= threshold[asset_index]:
+        return  1, r * coef[asset_index]
+    elif num >= -threshold[asset_index]:
+        return 0,0
+    else:
+        return  -1, r * coef[asset_index]
 
 def lstm(X,weights,biases):
     batch_size=tf.shape(X)[0]
@@ -58,31 +70,26 @@ def prediction_lstm(asset_index,inputs,time_step,save_name):
                 'out':tf.Variable(tf.constant(0.1,shape=[output_size,]),name='out_b')
                 }
     pred,_ = lstm(X,weights,biases)
+    
     with tf.Session() as sess:
         saver = tf.train.Saver()
         saver.restore(sess,'save/'+save_name)
         #print(asset_index,sess.run(weights['in']))
-        for i in range(1):
-            x = np.array(inputs).reshape(1,len(inputs),input_size)
-            prob=sess.run(pred,feed_dict={X:x})
-            inputs.append(prob[-1][0])
+        #for i in range(1):
+        x = np.array(inputs).reshape(1,time_step,input_size)
+        
+        prob=sess.run(pred,feed_dict={X:x})
+            #inputs.append(prob[-1][0])
         #print(asset_index,prob)
         
-        def trans(num):
-            r = num/threshold[asset_index]
-            if num >= threshold[asset_index]:
-                return   r * coef[asset_index]
-            elif num >= -threshold[asset_index]:
-                return 0
-            else:
-                return  r * coef[asset_index]
+        
 
         ##x = np.array(inputs).reshape(1,len(inputs),input_size)
         #prob=sess.run(pred,feed_dict={X:x})
         ##if trans(prob[-1][0]) * trans(prob[-len(trans)//][0]) > 0
-        predict = trans(prob[-1][0])
+        #predict = trans(prob[-1][0])
         #print(asset_index,prob[-1])
-    return predict
+    return prob
 
 
 
@@ -128,7 +135,7 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
         memory.last = {}
         memory.next = {}
         memory.flag = {}
-        memory.data_accuracy={}
+        memory.pred_seq={}
         for asset_index in range(4):
             #memory.data_save[asset_index] = pd.DataFrame(columns = ['close', 'high', 'low', 'open', 'volume'])
             memory.data_save[asset_index] = pd.DataFrame(columns = ['close', 'high', 'low', 'open', 'volume'])
@@ -136,11 +143,13 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
             memory.transaction[asset_index] = 0
             memory.last[asset_index] = 0
             memory.next[asset_index] = 0
-            memory.flag[asset_index] = 0
-            memory.data_accuracy[asset_index] =[]
+            memory.pred_seq[asset_index] =[]
+            memory.flag[asset_index] =0
+             
 
     
     if (counter + 1) % bar_length == 0:
+        #print(counter)
         #seg = None
         for asset_index in assets:
             save_name = str(asset_index)+'.ckpt'
@@ -161,29 +170,45 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
              for asset_index in assets:
                 #print(counter,position_new) 
                 
-                
-                #if memory.flag[asset_index] == 1:
-                #    memory.flag[asset_index] = 0
-                    #memory.next[asset_index] = position_current[asset_index]
-                    #memory.transaction[asset_index] = memory.last[asset_index]-memory.next[asset_index]
-                    #position_new[asset_index] = 0 # memory.transaction[asset_index]
-                #    memory.last[asset_index] = position_current[asset_index]
-                #else:
-                if 1:
-                    memory.flag[asset_index] = 1
-                    memory.last[asset_index] = position_current[asset_index]
+                '''
+                if memory.flag[asset_index] == 1:
+                    memory.flag[asset_index] = 0
+                    memory.next[asset_index] = position_current[asset_index]
                     inpuuts = generate_bar2(memory.data[asset_index])
                     tf.reset_default_graph()
+                    memory.pred_seq[asset_index] = []
+                    predict = prediction_lstm(asset_index,inpuuts,interval_length,save_name)
+                    for i in range(int(bar_length*0.3)):
+                        if predict[i][0] * memory.transaction[asset_index] < 0:
+                            memory.pred_seq[asset_index].append(i)
+                            
+                    memory.transaction[asset_index] = memory.last[asset_index]-memory.next[asset_index]
+                    position_new[asset_index] = 0 # memory.transaction[asset_index]
+                    memory.last[asset_index] = position_current[asset_index]
+                else:
+                '''
+                if 1:
+                    memory.flag[asset_index] = 1
+                    memory.last[asset_index] = memory.data[asset_index][-1][0]
+                    inpuuts = generate_bar2(memory.data[asset_index])
+                    tf.reset_default_graph()
+                    #print(asset_index,inpuuts)
                     predict = prediction_lstm(asset_index,inpuuts,interval_length,save_name)
                     
                     # 追买追卖策略
-                    #if memory.transaction[asset_index] * predict > 0:
-                    #    memory.transaction[asset_index] += predict
-                    #else:
-                    memory.transaction[asset_index] = predict
+                    memory.pred_seq[asset_index] = []
+                    memory.transaction[asset_index],lens = trans(predict[-1][0],asset_index)
+                    #print(memory.transaction[asset_index])
+                    #for i in range(int(bar_length)):
+                        #t,_ = trans(,asset_index)
+                        #if predict[i][0] * memory.transaction[asset_index] < 0:
+                       #     memory.pred_seq[asset_index].append(i)
                     
                     
-                    position_new[asset_index] =  memory.transaction[asset_index]
+                    
+                    
+                    
+                    #position_new[asset_index] += memory.transaction[asset_index]
                     
                 
                 
@@ -193,19 +218,25 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
                 
                 
                 
-        
-    else:
-        for asset_index in  assets:
-        
-            #if memory.flag[asset_index] == 0:
-            #    if (counter + 1) % bar_length - 1 < interval_length * 0.1:
-            #        position_new[asset_index] = 0 
-            #else:
-            if 1:
-                if (counter + 1) % bar_length - 1 < interval_length * 0.1:
-                    position_new[asset_index] = memory.last[asset_index] + memory.transaction[asset_index]
-            
-            memory.data_save[asset_index].loc[(counter + 1) % bar_length - 1] = data[asset_index,]
+        else: 
+            #print(counter)
+            for asset_index in assets:
+                #if memory.flag[asset_index] == 0 :
+                #    if (counter + 1) % bar_length - 1 in memory.pred_seq[asset_index]:
+                #        position_new[asset_index] = 0 
+                #else:
+                def value(data):
+                    return sum(data[0:4])/4
+                #print( value(data[asset_index,]),memory.last[asset_index])
+                if memory.transaction[asset_index] > 0 :
+                    
+                    if value(data[asset_index,]) <= memory.last[asset_index] and cash_balance > init_cash*0.2:# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
+                        position_new[asset_index] += memory.transaction[asset_index]
+                elif memory.transaction[asset_index] < 0 :
+                    #print( value(data[asset_index,]),memory.last[asset_index])
+                    if value(data[asset_index,]) >= memory.last[asset_index] and position_current[asset_index] > -3 :# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
+                        position_new[asset_index] += memory.transaction[asset_index]
+                
 
     # End of strategy
     return position_new, memory
