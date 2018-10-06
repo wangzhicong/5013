@@ -230,11 +230,11 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
                 #print( value(data[asset_index,]),memory.last[asset_index])
                 if memory.transaction[asset_index] > 0 :
                     
-                    if value(data[asset_index,]) <= memory.last[asset_index] and cash_balance > init_cash*0.2:# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
+                    if value(data[asset_index,]) <= memory.last[asset_index] and position_current[asset_index] < 10:# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
                         position_new[asset_index] += memory.transaction[asset_index]
                 elif memory.transaction[asset_index] < 0 :
                     #print( value(data[asset_index,]),memory.last[asset_index])
-                    if value(data[asset_index,]) >= memory.last[asset_index] and position_current[asset_index] > -3 :# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
+                    if value(data[asset_index,]) >= memory.last[asset_index] and position_current[asset_index] > -10 :# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
                         position_new[asset_index] += memory.transaction[asset_index]
                 
 
