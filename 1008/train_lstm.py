@@ -52,16 +52,16 @@ def main(argv):
     data_loader = dataset.dataset(2*FLAGS.time_steps)
     data_loader.load_training('data_format1_201808.h5')
     data_size = data_loader.data_size     
-    for i in [int(k) for k in FLAGS.assets.split(',')]:
+    for index in [int(k) for k in FLAGS.assets.split(',')]:
         tf.reset_default_graph()
-        save_name =str(i)+'.ckpt'
+        save_name =str(index)+'.ckpt'
         model = lstm_model.GRU_model(FLAGS.time_steps, FLAGS.input_size, FLAGS.num_layers, FLAGS.hidden)
         train_op=tf.train.AdamOptimizer(FLAGS.lr).minimize(model.loss)  
         saver=tf.train.Saver(tf.global_variables())
         with tf.Session() as sess:        
             sess.run(tf.global_variables_initializer())
             for i in range(FLAGS.num_epoches*(data_size//FLAGS.batch_size)):
-                x,y = data_loader.next_batch(i,FLAGS.batch_size,FLAGS.input_size,FLAGS.output_size)
+                x,y = data_loader.next_batch(index,FLAGS.batch_size,FLAGS.input_size,FLAGS.output_size)
                 _,loss_=sess.run([train_op,model.loss],feed_dict={model.input_x:x,model.input_y:y,model.dropout_keep_prob:0.9}) 
                 
                 if i % 1000 == 0: 
