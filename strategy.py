@@ -1,25 +1,22 @@
-# Here you can
-# 1. import necessary python packages for your strategy
-# 2. Load your own facility files containing functions, trained models, extra data, etc for later use
-# 3. Set some global constants
-# Note:
-# 1. You should put your facility files in the same folder as this strategy.py file
-# 2. When load files, ALWAYS use relative path such as "data/facility.pickle"
 import tensorflow as tf
 import numpy as np
 
 from data_preprocessor import DataPreprocessor
 from input_helper import InputHelper
-from predict import predict
+import predict
 
-assets = [0] 
+assets = [0] # assets to be considered
 bar_length = 10  # Number of minutes to generate next new bar
-time_steps = 18
+time_steps = 18 # time steps of LSTM model
 
 mean_std = np.load("./save/mean-std.npy")
 mean, std = mean_std[0], mean_std[1]
 
 input_helper = InputHelper()
+
+models = {}
+for asset in assets:
+    models[asset] = predict.load(asset)
 
 # 2. The strategy function AWAYS returns two things - position and memory:
 # 2.1 position is a np.array (length 4) indicating your desired position of four crypto currencies next minute
@@ -36,21 +33,14 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
                position_current,  # your position for 4 crypto currencies at this minute
                memory  # a class, containing the information you saved so far
                ):
-    # Here you should explain the idea of your strategy briefly in the form of Python comment.
-    # You can also attach facility files such as text & image & table in your team folder to illustrate your idea
 
+    """
     # The idea of my strategy:
-    # Logistic regression with label = rising/falling signal. 
+    # LSTM model:
+    #   1. input: open prices, increasing rates and average volumes at the previous time steps
+    #   2. ouput: (probability of) the increasing rate at next time step
+    """
 
-    # Pattern for long signal:
-    # When the predicted signal is rising, we long 1 BTC at the next bar; otherwise we short 1 BTC at the next bar.
-
-    # Pattern for short signal:
-    # When the predicted probability of rising is low (i.e., lower than 0.45), we short 1 BTC at the next bar.
-
-    # No controlling of the position is conducted in this strategy.
-
-    # Get position of last minute
     position_new = position_current
     
     if (counter == 0):
@@ -67,13 +57,24 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
         memory.data_save.clear()
         if len(memory.bar_save) == time_steps + 1:
             for asset in assets:
-                print(np.asarray(memory.bar_save).shape)
+                #print(np.asarray(memory.bar_save).shape)
                 x, y = input_helper.generate_dataset(np.asarray(memory.bar_save), [asset], time_steps)
-                pred = predict(asset, x, y)
-                if (pred > 0.55):
-                    position_new[asset] += 1
-                if (pred < 0.45): 
-                    position_new[asset] -= 1
+                pred = predict.predict(models[asset][1], models[asset][2], x, y)
+                #print(pred)
+                if cash_balance > 16000:
+                    if pred > 0.55:
+                        position_new[asset] += 1
+                    elif pred > 0.7:
+                        position_new[asset] += 5
+                    elif pred > 0.85:
+                        position_new[asset] += 10
+                if position_current[asset] > 0:
+                    if pred < 0.45: 
+                        position_new[asset] -= 1
+                    elif pred < 0.3:
+                        position_new[asset] -= 5
+                    elif pred < 0.15:
+                        position_new[asset] = 0
             memory.bar_save.pop(0)
 
     # End of strategy

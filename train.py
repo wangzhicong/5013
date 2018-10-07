@@ -5,7 +5,7 @@ from input_helper import InputHelper
 from lstm_network import LSTM
 
 def init_parameters():
-    tf.app.flags.DEFINE_string("input_file", "../data/data_format2_201808.h5", "")
+    tf.app.flags.DEFINE_string("input_files", "../data/data_format2_201808.h5", "")
 
     tf.app.flags.DEFINE_integer("bar_length", 10, "")
     tf.app.flags.DEFINE_string("assets", "0,1,2,3", "")
@@ -13,14 +13,14 @@ def init_parameters():
     tf.app.flags.DEFINE_boolean("regression", False, "")
 
     tf.app.flags.DEFINE_integer("num_epoches", 10, "")
-    tf.app.flags.DEFINE_integer("batch_size", 128, "")
+    tf.app.flags.DEFINE_integer("batch_size", 32, "")
     tf.app.flags.DEFINE_float("learning_rate", 1e-3, "")
 
     tf.app.flags.DEFINE_integer("time_steps", 18, "")
     tf.app.flags.DEFINE_integer("num_layers", 3, "")
     tf.app.flags.DEFINE_integer("hidden_units", 64, "")
     tf.app.flags.DEFINE_float("l2_reg_lambda", 0.1, "")
-    tf.app.flags.DEFINE_float("dropout_keep_prob", 1.0, "")
+    tf.app.flags.DEFINE_float("dropout_keep_prob", 0.6, "")
 
     # Misc Parameters
     tf.app.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
@@ -35,9 +35,10 @@ def main(argv):
         print("{} = {}".format(attr, value))
 
     assets = list(map(int, FLAGS.assets.split(",")))
+    input_files = FLAGS.input_files.split(",")
     input_helper = InputHelper()
     # train_set: (X_train, Y_train), where X_train's shape is [length, time_steps, len(assets) * 3], and Y_train's shape is [length, len(assets) * 3]
-    train_set, dev_set = input_helper.get_dataset(FLAGS.input_file, FLAGS.bar_length, assets, FLAGS.time_steps, FLAGS.percent_dev, shuffle=True)
+    train_set, dev_set = input_helper.get_dataset(input_files, FLAGS.bar_length, assets, FLAGS.time_steps, FLAGS.percent_dev, shuffle=True)
     print(train_set[0].shape, train_set[1].shape)
     print(dev_set[0].shape, dev_set[1].shape)
 

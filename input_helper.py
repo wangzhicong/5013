@@ -6,8 +6,8 @@ class InputHelper:
     def __init__(self):
         self.data_preprocessor = DataPreprocessor()
 
-    def get_dataset(self, input_file, bar_length, assets, time_steps, percent_dev, shuffle=True):
-        data = self.data_preprocessor.read(input_file)
+    def get_dataset(self, input_files, bar_length, assets, time_steps, percent_dev, shuffle=True):
+        data = self.data_preprocessor.read(input_files)
         data = self.data_preprocessor.preprocess(data, bar_length)
         data = self.data_preprocessor.select_features(data)
         data, mean, std = self.data_preprocessor.normalize(data)

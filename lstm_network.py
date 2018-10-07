@@ -7,13 +7,13 @@ class LSTM:
         self.input_y = tf.placeholder(tf.float32, [None, input_size], name="input_y")
         self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
 
-        self.pred = self.model(self.input_x, time_steps, input_size, num_layers, hidden_units, self.dropout_keep_prob)
-        self.accuracy = tf.reduce_mean(tf.maximum(.0, tf.sign(tf.multiply(self.pred, self.input_y))))
+        self.pred_val = self.model(self.input_x, time_steps, input_size, num_layers, hidden_units, self.dropout_keep_prob)
+        self.accuracy = tf.reduce_mean(tf.maximum(.0, tf.sign(tf.multiply(self.pred_val, self.input_y))))
         if regression:
-            self.loss = self.mse_loss(self.pred, self.input_y)
+            self.loss = self.mse_loss(self.pred_val, self.input_y)
         else:
-            self.pred = tf.nn.sigmoid(self.pred, name="pred")
-            self.loss = self.cross_entropy_loss(self.pred, self.input_y)
+            self.pred_prob = tf.nn.sigmoid(self.pred_val, name="pred_prob")
+            self.loss = self.cross_entropy_loss(self.pred_prob, self.input_y)
 
     # x's shape is [batch_size, time_steps, input_size * 3]
     def model(self, x, time_steps, input_size, num_layers, hidden_units, dropout_keep_prob):
@@ -27,15 +27,15 @@ class LSTM:
         outputs, state = tf.nn.static_rnn(stacked_lstm_cells, x, dtype=tf.float32)
         W = self.weights(hidden_units, input_size)
         b = self.bias(input_size)
-        return tf.add(tf.matmul(outputs[-1], W), b, name="pred")
+        return tf.add(tf.matmul(outputs[-1], W), b, name="pred_val")
 
     # y's shape is [batch_size, input_size]
-    def mse_loss(self, pred, y):
-        return tf.reduce_mean(tf.square(tf.subtract(pred, y)))
+    def mse_loss(self, pred_val, y):
+        return tf.reduce_mean(tf.square(tf.subtract(pred_val, y)))
 
-    def cross_entropy_loss(self, pred, y):
+    def cross_entropy_loss(self, pred_prob, y):
         label = tf.maximum(.0, tf.sign(y))
-        return tf.reduce_mean(-label * tf.log(pred) - (1 - label) * tf.log(1 - pred))
+        return tf.reduce_mean(-label * tf.log(pred_prob) - (1 - label) * tf.log(1 - pred_prob))
 
     def weights(self, input_size, output_size):
         W = tf.Variable(tf.random_normal(shape=[input_size, output_size]) * 0.01, name="weights")

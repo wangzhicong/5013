@@ -10,11 +10,20 @@ import matplotlib
 # You should change this directory below on your own computer accordingly.
 working_folder = "."
 
+#format1_dir = "../data/data_format1_20180901_20180909.h5"
+#format2_dir = "../data/data_format2_20180901_20180909.h5"
 
-# Write down your file paths for format 1 and format 2
-# Note: You can test your strategy on different periods. Try to make your strategy profitable stably.
-format1_dir = "../data/data_format1_20180901_20180909.h5"
-format2_dir = "../data/data_format2_20180901_20180909.h5"
+#format1_dir = "../data/data_format1_20180909_20180916.h5"
+#format2_dir = "../data/data_format2_20180909_20180916.h5"
+
+format1_dir = "../data/data_format1_20180916_20180923.h5"
+format2_dir = "../data/data_format2_20180916_20180923.h5"
+
+#format1_dir = "../data/data_format1_20180923_20180930.h5"
+#format2_dir = "../data/data_format2_20180923_20180930.h5"
+
+#format1_dir = "../data/data_format1_20180930_20181007.h5"
+#format2_dir = "../data/data_format2_20180930_20181007.h5"
 
 # The following code is for backtesting. DO NOT change it unless you want further exploration beyond the course project.
 # import your handle_bar function

@@ -2,11 +2,13 @@ import h5py
 import numpy as np
 
 class DataPreprocessor:
-    def read(self, path):
-        h5data = h5py.File(path)
+    def read(self, input_files):
         data = []
-        for key in list(h5data.keys()):
-            data.append(h5data[key][:,:])
+        for input_file in input_files:
+            h5data = h5py.File(input_file)
+            for key in list(h5data.keys()):
+                data.append(h5data[key][:,:])
+            print("read {}".format(input_file))
         return np.asarray(data)
 
     def generate_bar(self, data):
