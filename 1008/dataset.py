@@ -15,10 +15,10 @@ data_format2_dir = 'C:\\Users\\Wangzhc\\Desktop\\codes\\python code\\5013\\data\
     
 
 class dataset:
-    def __init__(self,bar_length):
+    def __init__(self,bar_length,pred_num=0):
         self.bar_length = bar_length
         self.data_size = 0
-        self.pred_num = 0
+        self.pred_num = pred_num
         self.training_set={}
         self.testing_set={}
         for i in range(4):
@@ -64,15 +64,19 @@ class dataset:
                         if segment[i] < segment[bar_length//2+i]:
                             tmp.append(2)
                     '''
-                    self.training_set[asset]['y'].append(segment[self.bar_length//2:self.bar_length])
+                    def norm(x):
+                        if x > 0 :
+                            return 1
+                        elif x <= 0:
+                            return 0
+                    self.training_set[asset]['y'].append(segment[self.bar_length-1:self.bar_length])
                     data[asset].pop(0)
                 else:
                     data_cur_min = format2[keys[i]][:]
                     data[asset].append(data_cur_min[asset,])
             
             
-        self.data_size = len(self.training_set[asset]['y'])
-        self.pred_num = self.data_size* 0.2
+        self.data_size = len(self.training_set[asset]['y']) - self.pred_num 
     
     def next_batch(self,index,batch,size_in,size_out):
         x = []
@@ -85,7 +89,7 @@ class dataset:
             y.append(self.training_set[index]['y'][start:start+1])
         
         x = np.array(x).reshape(batch,self.bar_length//2,size_in)
-        y = np.array(y).reshape(batch,self.bar_length//2,size_out)
+        y = np.array(y).reshape(batch,size_out)
         #print(x)
         return x,y  
     

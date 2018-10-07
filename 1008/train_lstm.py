@@ -1,17 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import h5py
-import sys
-import pandas as pd
-from tqdm import tqdm
 import tensorflow as tf
-import numpy as np
 import dataset
-
-#working_folder = 'C:\\Users\\Wangzhc\\Desktop\\codes\\python code\\5013\\Greenwich_0930\\'
-#sys.path.append(working_folder)
-from auxiliary import generate_seg,generate_bar
-
 
 
 def init_parameters():
@@ -23,7 +13,7 @@ def init_parameters():
     tf.app.flags.DEFINE_integer("input_size", 1, "")
     tf.app.flags.DEFINE_float("lr", 1e-2, "")
     tf.app.flags.DEFINE_integer("num_layers", 3, "")
-    tf.app.flags.DEFINE_integer("time_steps", 30, "")
+    tf.app.flags.DEFINE_integer("time_steps", 60, "")
     tf.app.flags.DEFINE_string("assets", '0,1,2,3', "")
     tf.app.flags.DEFINE_boolean("test", False, "")
     
@@ -51,8 +41,10 @@ def main(argv):
         print("{} = {}".format(attr, value))
     data_loader = dataset.dataset(2*FLAGS.time_steps)
     data_loader.load_training('data_format1_201808.h5')
+    data_loader.split_data()
     data_size = data_loader.data_size     
     for index in [int(k) for k in FLAGS.assets.split(',')]:
+        print('start training asset', index)
         tf.reset_default_graph()
         save_name =str(index)+'.ckpt'
         model = lstm_model.GRU_model(FLAGS.time_steps, FLAGS.input_size, FLAGS.num_layers, FLAGS.hidden)
@@ -68,16 +60,17 @@ def main(argv):
                     print('iter:',i,'loss:',loss_)
                     '''
                     count = 0
-                    for k in range(pred_num):
-                        x_t, y_t= next_batch_test(index,k)
-                        x_t = np.array(x_t).reshape(1,time_step,input_size)
-                        prob=sess.run(pred,feed_dict={X:x_t})
+                    for k in range(data_loader.pred_num):
+                        #model2 = lstm_model.GRU_model(FLAGS.time_steps, FLAGS.input_size, FLAGS.num_layers, FLAGS.hidden,batch_size=1)
+                        x_t, y_t= data_loader.next_batch_test(index,k)
+                        x_t = np.array(x_t).reshape(1,FLAGS.time_steps,FLAGS.input_size)
+                        prob=sess.run(model.pred,feed_dict={model.input_x:x_t})
                         #print(prob[-1][0],y_t[0][0][-1][0])
                         if prob[-1][0] * y_t[0][0][-1] > 0:
                             count+=1
                         if prob[-1][0] == 0 and y_t[0][0][-1] == 0:
                             count+=1
-                    print(count/pred_num)
+                    print(count/data_loader.pred_num)
                     '''
             saver = tf.train.Saver()
             saver.save(sess, "save/"+save_name)
