@@ -10,10 +10,10 @@ def init_parameters():
 
     tf.app.flags.DEFINE_integer("hidden", 32, "")
     tf.app.flags.DEFINE_integer("output_size", 1, "")
-    tf.app.flags.DEFINE_integer("input_size", 1, "")
-    tf.app.flags.DEFINE_float("lr", 1e-2, "")
+    tf.app.flags.DEFINE_integer("input_size", 2, "")
+    tf.app.flags.DEFINE_float("lr", 1e-3, "")
     tf.app.flags.DEFINE_integer("num_layers", 3, "")
-    tf.app.flags.DEFINE_integer("time_steps", 60, "")
+    tf.app.flags.DEFINE_integer("time_steps", 30, "")
     tf.app.flags.DEFINE_string("assets", '0,1,2,3', "")
     tf.app.flags.DEFINE_boolean("test", False, "")
     
@@ -28,8 +28,14 @@ def init_parameters():
     tf.app.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
     tf.app.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
 
-init_parameters()
+#init_parameters()
+FLAGS = tf.app.flags.FLAGS
+data_loader = dataset.dataset(FLAGS.time_steps)
+data_loader.load_training('data_format1_201808.h5')
+data_loader.split_data()
+data_size = data_loader.data_size 
 
+   
 import warnings 
 warnings.filterwarnings('ignore')
 import lstm_model
@@ -39,15 +45,12 @@ def main(argv):
     print("Parameters:")
     for attr, value in sorted(FLAGS.flag_values_dict().items()):
         print("{} = {}".format(attr, value))
-    data_loader = dataset.dataset(2*FLAGS.time_steps)
-    data_loader.load_training('data_format1_201808.h5')
-    data_loader.split_data()
-    data_size = data_loader.data_size     
+     
     for index in [int(k) for k in FLAGS.assets.split(',')]:
         print('start training asset', index)
         tf.reset_default_graph()
         save_name =str(index)+'.ckpt'
-        model = lstm_model.GRU_model(FLAGS.time_steps, FLAGS.input_size, FLAGS.num_layers, FLAGS.hidden)
+        model = lstm_model.GRU_model(FLAGS.time_steps, FLAGS.input_size,FLAGS.output_size, FLAGS.num_layers, FLAGS.hidden)
         train_op=tf.train.AdamOptimizer(FLAGS.lr).minimize(model.loss)  
         saver=tf.train.Saver(tf.global_variables())
         with tf.Session() as sess:        

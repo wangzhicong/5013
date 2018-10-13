@@ -52,12 +52,12 @@ class dataset:
         for i in tqdm(range(data_load)):
             for asset in range(4):
                 
-                if len(data[asset]) == self.bar_length-1:
+                if len(data[asset]) == self.bar_length:
                     data_cur_min = format2[keys[i]][:]
                     data[asset].append(data_cur_min[asset,])
                     segment = generate_bar(data[asset])   
                     #print(segment)
-                    self.training_set[asset]['x'].append(segment[0:self.bar_length//2])
+                    self.training_set[asset]['x'].append(segment[0:self.bar_length])
                     #tmp = []
                     '''
                     for k in range(len(segment[bar_length//2:bar_length])):
@@ -65,11 +65,13 @@ class dataset:
                             tmp.append(2)
                     '''
                     def norm(x):
-                        if x > 0 :
+                        if x[0] > 0.05 :
+                            return 2
+                        elif x[0] >=-0.05:
                             return 1
-                        elif x <= 0:
+                        else:
                             return 0
-                    self.training_set[asset]['y'].append(segment[self.bar_length-1:self.bar_length])
+                    self.training_set[asset]['y'].append(norm(segment[self.bar_length]))
                     data[asset].pop(0)
                 else:
                     data_cur_min = format2[keys[i]][:]
@@ -88,7 +90,7 @@ class dataset:
             x.append(self.training_set[index]['x'][start:start+1])
             y.append(self.training_set[index]['y'][start:start+1])
         
-        x = np.array(x).reshape(batch,self.bar_length//2,size_in)
+        x = np.array(x).reshape(batch,self.bar_length,size_in)
         y = np.array(y).reshape(batch,size_out)
         #print(x)
         return x,y  
