@@ -28,7 +28,7 @@ def init_parameters():
     tf.app.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
     tf.app.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
 
-#init_parameters()
+init_parameters()
 FLAGS = tf.app.flags.FLAGS
 data_loader = dataset.dataset(FLAGS.time_steps)
 data_loader.load_training('data_format1_201808.h5')

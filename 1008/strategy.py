@@ -1,14 +1,13 @@
 '''
 simple rnn based method
-slow with low accuracy
-maybe a wrong implementation
+slow 
+
 '''
 from auxiliary import generate_seg,generate_bar,generate_bar2
 import pandas as pd
 #from tensorflow.contrib.rnn import GRUCell as gru
 import tensorflow as tf
 import numpy as np
-import lstm_model
 tf.logging.set_verbosity(tf.logging.ERROR)
 import model_loader
 
@@ -18,55 +17,42 @@ input_size=2
 output_size = 1
 num_layers=3
 hidden=32
-assets = [0,1,2,3]
-threshold = [0.8 for i in assets]
+assets = [0,1,2,3]  
+times = [0.1,0.05,0.1,0.1]
 
+# pre-load model to speed up 
 models = {}
 for asset in assets:
     models[asset] = model_loader.load(asset)
 
-'''
-def prediction_lstm(asset_index,inputs,time_step,save_name):
-    model = lstm_model.GRU_model(time_steps, input_size,output_size, num_layers, hidden)
-    with tf.Session() as sess:
-        saver = tf.train.Saver()
-        saver.restore(sess,'save/'+save_name)
-        x = np.array(inputs).reshape(1,time_step,input_size)       
-        prob=sess.run(model.pred,feed_dict={model.input_x:x,model.dropout_keep_prob:0.9})
-        #print(prob)
-    return prob
-'''
+
+#parameter calculated from the past data
+#week 3
 #upper_bound = [542.43,6799.43,249.25,60.41]
 #lower_bound = [411.19,6086.15,181.75,50.79]
-
+#week 4
 #upper_bound = [471.19,6574.17,229.51,57.66]
 #lower_bound = [428.83,6276.87,193.55,51.84]
 
 
-upper_bound = [518.79,6666.12,234.18,61.63]
-lower_bound = [432.93,6396.64,210.16,55.59]
+#week 5
+#upper_bound = [518.79,6666.12,234.18,61.63]
+#lower_bound = [432.93,6396.64,210.16,55.59]
+
+#week 6
+upper_bound = [516.77,6546.40,224.39,58.64]
+lower_bound = [486.58,6481.08,218.36,56.93]
 
 
-def trans(num,asset_index):
-    r = num/threshold[asset_index]
-    if num >= threshold[asset_index]:
-        return  0.1, r 
-    elif num >= -threshold[asset_index]:
-        return 0,0
-    else:
-        return  -0.1, r 
-    
+#transfer the ouput
 def trans_2(num,asset_index):
     r = num
     if num >= 1.8:
-        return  -1, r 
+        return  1.025, r 
     elif num >= 0.2:
-        return 0,0
+        return 1,0
     else:
-        return  1, r 
-
-#model = joblib.load('model.pkl')#####
-#asset_index = 1  # only consider BTC (the **second** crypto currency in dataset)
+        return  0.975, r 
 
 # Here is your main strategy function
 # Note:
@@ -87,13 +73,17 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
                position_current,  # your position for 4 crypto currencies at this minute
                memory  # a class, containing the information you saved so far
                ):
-    # Pattern for long signal:
-    # When the predicted signal is larger than threshold , we long (pred/threshold) at the next bar; otherwise we short certain at the next bar.
+    # Pattern for short signal:   
+    # if next minute price is larger than the upper bounder, then short certain amount
 
     # Pattern for short signal:
-    # When the predicted signal is smaller than -threshold , we short (pred/threshold) at the next bar;
+    # if next minute price is lower than the upper bounder, then long certain amount
+    
+    # use rnn based model to predict the next time price 
+    # input of the model is the normaled price and the volume
+    # the output put of model is one value which is assumed to return 0,1,2 which stands for lower <-5%,same -5%-5%,larger >5%
 
-    # No controlling of the position is conducted in this strategy.
+    # if cash balance is lower than some value, then manually let the next position to be 0
 
     # Get position of last minute
     position_new = position_current.copy()
@@ -120,106 +110,43 @@ def handle_bar(counter,  # a counter for number of minute bars that have already
 
     
     if (counter + 1) % bar_length == 0:
-        #print(counter)
-        #seg = None
+
         for asset_index in assets:
-            #save_name = str(asset_index)+'.ckpt'
             memory.data_save[asset_index].loc[bar_length - 1] = data[asset_index,]
             segment = generate_seg(memory.data_save[asset_index]) # pandas dataframe
-            
             memory.data[asset_index].append(segment) 
-            
-        #print(memory.data)     
-            #inputs = generate_bar(segment)
-            #tf.reset_default_graph()
-            
-            #predict = prediction_lstm(asset_index,inputs,interval_length,save_name)
                 
         
         if len(memory.data[asset_index]) == time_steps:
-             #print(counter,position_current) 
              for asset_index in assets:
-                #print(position_new) 
-                '''
-                if memory.flag[asset_index] == 1 :
-                    memory.flag[asset_index] = 0
-                    memory.last[asset_index] = memory.data[asset_index][-1][0]
-                    #if (counter + 1) % bar_length - 1 in memory.pred_seq[asset_index]:
-                    position_new[asset_index] = 0
-               
-                else:
-                '''
                 if 1:
+                   
                     memory.flag[asset_index] = 1
                     memory.last[asset_index] = memory.data[asset_index][-1][0]
                     inputs = generate_bar2(memory.data[asset_index])
-                    
-                    #print(asset_index,inpuuts)
-                    #tf.reset_default_graph()
-                    #save_name =str(asset_index)+'.ckpt'
                     x = np.array(inputs).reshape(1,time_steps,input_size)   
                     predict = model_loader.predict(models[asset_index][1],models[asset_index][2],x)
-                   #print(predict)
                     
                     memory.transaction[asset_index],_ = trans_2(predict,asset_index)
-                    #memory.next[asset_index] = position_current[asset_index] + memory.transaction[asset_index] 
-                    if upper_bound[asset_index] *1.05 >= memory.data_save[asset_index].loc[bar_length - 1]['close'] >= upper_bound[asset_index] *0.95 :
-                        if memory.transaction[asset_index] <= 0:
-                            memory.pred_seq[asset_index] = 0
-                        if memory.transaction[asset_index] > 0:
-                            memory.pred_seq[asset_index] = -1
-                        
-                        #position_new[asset_index]  +=  memory.transaction[asset_index]
-                    #if memory.transaction[asset_index] < 0 and memory.data_save[asset_index].loc[bar_length - 1]['close'] <= lower_bound[asset_index]:
+                    memory.pred_seq[asset_index] = 0
+                    if memory.last[asset_index] * memory.transaction[asset_index] >= upper_bound[asset_index]:
+                        memory.pred_seq[asset_index] = - 1 * times[asset_index]
+                    elif memory.last[asset_index] * memory.transaction[asset_index]>= lower_bound[asset_index]:
+                        memory.pred_seq[asset_index] = 0
+                    elif memory.last[asset_index] * memory.transaction[asset_index] < lower_bound[asset_index]:
+                        memory.pred_seq[asset_index] = 1 * times[asset_index]
                     
-                    if lower_bound[asset_index] *1.05 >= memory.data_save[asset_index].loc[bar_length - 1]['close'] >= lower_bound[asset_index] *0.95 :
-                        if memory.transaction[asset_index] >= 0:
-                            memory.pred_seq[asset_index] = 0
-                        if memory.transaction[asset_index] < 0:
-                            memory.pred_seq[asset_index] = 1
-                        #position_new[asset_index]  +=  memory.transaction[asset_index]
-                    #print(memory.pred_seq[asset_index],memory.data_save[asset_index].loc[bar_length - 1]['close'])
                     if cash_balance < init_cash*0.15:
                         position_new[asset_index] = 0
                     else:
                         position_new[asset_index]  +=  memory.pred_seq[asset_index]
-                    #print(memory.transaction, position_current)
-                    #print(asset_index,memory.transaction[asset_index],predict,position_current)
+                   
+                    
                 memory.data[asset_index] = memory.data[asset_index][1:]
     else:
         for asset_index in assets:
             memory.data_save[asset_index].loc[(counter + 1) % bar_length - 1] = data[asset_index,]
-                
-        '''        
-        else: 
-            #print(counter,position_current,memory.last)
-            for asset_index in assets:
-                def value(data):
-                    return sum(data[0:4])/4
-                if memory.flag[asset_index] == 0 :
-                    if memory.transaction[asset_index] > 0:   
-                        if value(data[asset_index,]) <= memory.last[asset_index] :# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
-                            #print(memory.transaction[asset_index], position_current[asset_index])
-                            position_new[asset_index] -= memory.transaction[asset_index]
-                    elif memory.transaction[asset_index] < 0 :
-                        #print( value(data[asset_index,]),memory.last[asset_index])
-                        if value(data[asset_index,]) >= memory.last[asset_index] :# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
-                            position_new[asset_index] -= memory.transaction[asset_index]
-                    #if (counter + 1) % bar_length - 1 in memory.pred_seq[asset_index]:
-                    
-                else:
-                
-                #if (counter + 1) % time_steps  < time_steps* 0.3:
-                    #print( value(data[asset_index,]),memory.last[asset_index])
-                    if memory.transaction[asset_index] > 0:   
-                        if value(data[asset_index,]) <= memory.last[asset_index] :# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
-                            #print(memory.transaction[asset_index], position_current[asset_index])
-                            position_new[asset_index] += memory.next[asset_index]#memory.last[asset_index] + memory.transaction[asset_index]
-                    elif memory.transaction[asset_index] < 0 :
-                        #print( value(data[asset_index,]),memory.last[asset_index])
-                        if value(data[asset_index,]) >= memory.last[asset_index] :# and position_current[asset_index]  <= memory.last[asset_index] + memory.transaction[asset_index]:
-                            position_new[asset_index] += memory.next[asset_index]#memory.last[asset_index] + memory.transaction[asset_index]
-          '''         
+                 
 
     # End of strategy
     return position_new, memory
